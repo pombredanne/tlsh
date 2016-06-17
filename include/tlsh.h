@@ -1,6 +1,15 @@
 // tlsh.h - TrendLSH  Hash Algorithm
 
 /*
+ * TLSH is provided for use under two licenses: Apache OR BSD.
+ * Users may opt to use either license depending on the license
+ * restictions of the systems with which they plan to integrate
+ * the TLSH code.
+ */ 
+
+/* ==============
+ * Apache License
+ * ==============
  * Copyright 2013 Trend Micro Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +25,38 @@
  * limitations under the License.
  */
 
+/* ===========
+ * BSD License
+ * ===========
+ * Copyright (c) 2013, Trend Micro Incorporated
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+
+ * 3. Neither the name of the copyright holder nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software without
+ *    specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #ifndef _TLSH_H
 #define _TLSH_H
 
@@ -28,7 +69,7 @@
 class TlshImpl;
 
 // changed the minimum data length to 256 for version 3.3
-#define MIN_DATA_LENGTH	256
+#define MIN_DATA_LENGTH    256
 
 // Define TLSH_STRING_LEN, which is the string lenght of the hex value of the Tlsh hash.  
 // BUCKETS_256 & CHECKSUM_3B are compiler switches defined in CMakeLists.txt
@@ -51,13 +92,14 @@ class TlshImpl;
 #ifdef WINDOWS
 #include <WinFunctions.h>
 #else 
-#define TLSH_API
+#define TLSH_API __attribute__ ((visibility("default")))
 #endif
 
 class TLSH_API Tlsh{
 
 public:
     Tlsh();
+    Tlsh(const Tlsh& other);
 
     /* allow the user to add data in multiple iterations */
     void update(const unsigned char* data, unsigned int len);
@@ -84,10 +126,14 @@ public:
     /* validate TrendLSH string and reset the hash according to it */
     int fromTlshStr(const char* str);
 
+    /* check if Tlsh object is valid to operate */
+    bool isValid() const;
+
     /* Return the version information used to build this library */
     static const char *version();
 
     // operators
+    Tlsh& operator=(const Tlsh& other);
     bool operator==(const Tlsh& other) const;
     bool operator!=(const Tlsh& other) const;
 
