@@ -55,10 +55,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _TLSH_IMPL_H
-#define _TLSH_IMPL_H
-    
+#ifndef HEADER_TLSH_IMPL_H
+#define HEADER_TLSH_IMPL_H
+
 #define SLIDING_WND_SIZE  5
+
 #define BUCKETS           256
 #define Q_BITS            2    // 2 bits; quartile value 0, 1, 2, 3
 
@@ -74,7 +75,9 @@
     #define TLSH_CHECKSUM_LEN 1
     // defined in tlsh.h   #define TLSH_STRING_LEN   134  // 2 + 1 + 64 bytes = 134 hexidecimal chars
   #endif
-#else
+#endif
+
+#if defined BUCKETS_128
   #define EFF_BUCKETS         128
   #define CODE_SIZE           32   // 128 * 2 bits = 32 bytes
   #if defined CHECKSUM_3B
@@ -86,6 +89,13 @@
   #endif
 #endif
 
+#if defined BUCKETS_48
+  #define EFF_BUCKETS         48
+  #define CODE_SIZE           12   // 48 * 2 bits = 12 bytes
+  #define TLSH_CHECKSUM_LEN 1
+  // defined in tlsh.h   #define TLSH_STRING_LEN   30   // 2 + 1 + 12 bytes = 30 hexidecimal chars
+#endif
+
 class TlshImpl
 {
 public:
@@ -93,12 +103,15 @@ public:
     ~TlshImpl();
 public:
     void update(const unsigned char* data, unsigned int len);
-    void final();
+    void final(int force_option = 0);
     void reset();
     const char* hash() const;
     const char* hash(char *buffer, unsigned int bufSize) const;  // saves allocating hash string in TLSH instance - bufSize should be TLSH_STRING_LEN + 1
     int compare(const TlshImpl& other) const;
     int totalDiff(const TlshImpl& other, bool len_diff=true) const;
+    int Lvalue();
+    int Q1ratio();
+    int Q2ratio();
     int fromTlshStr(const char* str);
     bool isValid() const { return lsh_code_valid; }
 
@@ -111,10 +124,18 @@ private:
         unsigned char checksum[TLSH_CHECKSUM_LEN];  // 1 to 3 bytes
         unsigned char Lvalue;                       // 1 byte
         union {
+#if defined(__SPARC) || defined(_AIX)
+		#pragma pack(1)
+#endif
         unsigned char QB;
             struct{
+#if defined(__SPARC) || defined(_AIX)
+		unsigned char Q2ratio : 4;
+		unsigned char Q1ratio : 4;
+#else
                 unsigned char Q1ratio : 4;
                 unsigned char Q2ratio : 4;
+#endif
             } QR;
         } Q;                                        // 1 bytes
         unsigned char tmp_code[CODE_SIZE];          // 32/64 bytes

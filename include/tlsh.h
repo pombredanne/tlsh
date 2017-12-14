@@ -57,8 +57,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _TLSH_H
-#define _TLSH_H
+#ifndef HEADER_TLSH_H
+#define HEADER_TLSH_H
+
+#include "version.h"
 
 #ifndef NULL
 #define NULL 0
@@ -68,9 +70,6 @@
 
 class TlshImpl;
 
-// changed the minimum data length to 256 for version 3.3
-#define MIN_DATA_LENGTH    256
-
 // Define TLSH_STRING_LEN, which is the string lenght of the hex value of the Tlsh hash.  
 // BUCKETS_256 & CHECKSUM_3B are compiler switches defined in CMakeLists.txt
 #if defined BUCKETS_256
@@ -79,12 +78,31 @@ class TlshImpl;
   #else
     #define TLSH_STRING_LEN 134
   #endif
-#else
+  // changed the minimum data length to 256 for version 3.3
+  #define MIN_DATA_LENGTH		256
+  // added the -force option for version 3.5
+  #define MIN_FORCE_DATA_LENGTH	50
+#endif
+
+#if defined BUCKETS_128
   #if defined CHECKSUM_3B
     #define TLSH_STRING_LEN 74
   #else
     #define TLSH_STRING_LEN 70
   #endif
+  // changed the minimum data length to 256 for version 3.3
+  #define MIN_DATA_LENGTH		256
+  // added the -force option for version 3.5
+  #define MIN_FORCE_DATA_LENGTH	50
+#endif
+
+#if defined BUCKETS_48
+  // No 3 Byte checksum option for 48 Bucket min hash
+  #define TLSH_STRING_LEN 30
+  // changed the minimum data length to 256 for version 3.3
+  #define MIN_DATA_LENGTH		10
+  // added the -force option for version 3.5
+  #define MIN_FORCE_DATA_LENGTH		10
 #endif
 
 #define TLSH_STRING_BUFFER_LEN (TLSH_STRING_LEN+1)
@@ -92,7 +110,11 @@ class TlshImpl;
 #ifdef WINDOWS
 #include <WinFunctions.h>
 #else 
-#define TLSH_API __attribute__ ((visibility("default")))
+	#if defined(__SPARC) || defined(_AS_MK_OS_RH73)
+	   #define TLSH_API
+	#else
+	   #define TLSH_API __attribute__ ((visibility("default")))
+	#endif
 #endif
 
 class TLSH_API Tlsh{
@@ -105,7 +127,7 @@ public:
     void update(const unsigned char* data, unsigned int len);
 
     /* to signal the class there is no more data to be added */
-    void final(const unsigned char* data = NULL, unsigned int len = 0);
+    void final(const unsigned char* data = NULL, unsigned int len = 0, int force_option = 0);
 
     /* to get the hex-encoded hash code */
     const char* getHash() const ;
@@ -116,6 +138,11 @@ public:
     /* to bring to object back to the initial state */
     void reset();
     
+    // access functions
+    int Lvalue();
+    int Q1ratio();
+    int Q2ratio();
+
     /* calculate difference */
     /* The len_diff parameter specifies if the file length is to be included in the difference calculation (len_diff=true) or if it */
     /* is to be excluded (len_diff=false).  In general, the length should be considered in the difference calculation, but there */
@@ -142,6 +169,11 @@ public:
 private:
     TlshImpl* impl;
 };
+
+#ifdef TLSH_DISTANCE_PARAMETERS
+void set_tlsh_distance_parameters(int length_mult_value, int qratio_mult_value, int hist_diff1_add_value, int hist_diff2_add_value, int hist_diff3_add_value);
+#endif
+
 #endif
 
 #endif

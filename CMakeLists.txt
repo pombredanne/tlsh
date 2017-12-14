@@ -56,15 +56,21 @@ cmake_minimum_required(VERSION 2.6)
 project(TLSH)
 
 set(VERSION_MAJOR 3)
-set(VERSION_MINOR 4)
-set(VERSION_PATCH 5)
+set(VERSION_MINOR 9)
+set(VERSION_PATCH 1)
 
 # TLSH uses only half the counting buckets.
 # It can use all the buckets now.
 set(TLSH_BUCKETS_128 1)
+if(TLSH_BUCKETS_48 EQUAL 1)
+  set(TLSH_HASH "min hash")
+  add_definitions(-DBUCKETS_48)
+endif()
 if(TLSH_BUCKETS_128 EQUAL 1)
   set(TLSH_HASH "compact hash")
-else()
+  add_definitions(-DBUCKETS_128)
+endif()
+if(TLSH_BUCKETS_256 EQUAL 1)
   set(TLSH_HASH "full hash")
   add_definitions(-DBUCKETS_256)
 endif()
@@ -78,6 +84,11 @@ else()
   set(TLSH_CHECKSUM "3 bytes checksum")
   add_definitions(-DCHECKSUM_3B)
 endif()
+
+# setting TLSH_DISTANCE_PARAMETERS to 1 allows you to set command line arguments
+# to set - and hence experiment with the distance parameters
+#	by default this is zero
+set(TLSH_DISTANCE_PARAMETERS 0)
 
 # write a file with the VERSION information
 file(REMOVE VERSION)
@@ -97,6 +108,10 @@ file(WRITE include/version.h
   "#define VERSION_PATCH ${VERSION_PATCH}\n"
   "#define TLSH_HASH \"${TLSH_HASH}\"\n"
   "#define TLSH_CHECKSUM \"${TLSH_CHECKSUM}\"\n")
+if(TLSH_DISTANCE_PARAMETERS EQUAL 1)
+file(APPEND include/version.h
+  "#define TLSH_DISTANCE_PARAMETERS ${TLSH_DISTANCE_PARAMETERS}\n")
+endif()
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
     set(CMAKE_CXX_FLAGS "-g")

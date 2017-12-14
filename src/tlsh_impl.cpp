@@ -79,6 +79,8 @@ TlshImpl::TlshImpl() : a_bucket(NULL), data_len(0), lsh_code(NULL), lsh_code_val
 {
     memset(this->slide_window, 0, sizeof this->slide_window);
     memset(&this->lsh_bin, 0, sizeof this->lsh_bin);
+
+    assert (sizeof (this->lsh_bin.Q.QR) == sizeof (this->lsh_bin.Q.QB));
 }
 
 TlshImpl::~TlshImpl()
@@ -97,6 +99,18 @@ void TlshImpl::reset()
     this->lsh_code_valid = false;   
 }
 
+#if SLIDING_WND_SIZE==5
+	#define SLIDING_WND_SIZE_M1	4
+#elif SLIDING_WND_SIZE==4
+	#define SLIDING_WND_SIZE_M1	3
+#elif SLIDING_WND_SIZE==6
+	#define SLIDING_WND_SIZE_M1	5
+#elif SLIDING_WND_SIZE==7
+	#define SLIDING_WND_SIZE_M1	6
+#elif SLIDING_WND_SIZE==8
+	#define SLIDING_WND_SIZE_M1	7
+#endif
+
 void TlshImpl::update(const unsigned char* data, unsigned int len) 
 {
     #define RNG_SIZE    	SLIDING_WND_SIZE
@@ -113,12 +127,23 @@ void TlshImpl::update(const unsigned char* data, unsigned int len)
     for( unsigned int i=0; i<len; i++, fed_len++, j=RNG_IDX(j+1) ) {
         this->slide_window[j] = data[i];
         
-        if ( fed_len >= 4 ) {
+        if ( fed_len >= SLIDING_WND_SIZE_M1 ) {
             //only calculate when input >= 5 bytes
             int j_1 = RNG_IDX(j-1);
             int j_2 = RNG_IDX(j-2);
             int j_3 = RNG_IDX(j-3);
+#if SLIDING_WND_SIZE>=5
             int j_4 = RNG_IDX(j-4);
+#endif
+#if SLIDING_WND_SIZE>=6
+            int j_5 = RNG_IDX(j-5);
+#endif
+#if SLIDING_WND_SIZE>=7
+            int j_6 = RNG_IDX(j-6);
+#endif
+#if SLIDING_WND_SIZE>=8
+            int j_7 = RNG_IDX(j-7);
+#endif
            
             for (int k = 0; k < TLSH_CHECKSUM_LEN; k++) {
                  if (k == 0) {
@@ -137,23 +162,65 @@ void TlshImpl::update(const unsigned char* data, unsigned int len)
             this->a_bucket[r]++;
             r = b_mapping(5, this->slide_window[j], this->slide_window[j_2], this->slide_window[j_3]);
             this->a_bucket[r]++;
+#if SLIDING_WND_SIZE>=5
             r = b_mapping(7, this->slide_window[j], this->slide_window[j_2], this->slide_window[j_4]);
             this->a_bucket[r]++;
             r = b_mapping(11, this->slide_window[j], this->slide_window[j_1], this->slide_window[j_4]);
             this->a_bucket[r]++;
             r = b_mapping(13, this->slide_window[j], this->slide_window[j_3], this->slide_window[j_4]);
             this->a_bucket[r]++;
-
+#endif
+#if SLIDING_WND_SIZE>=6
+            r = b_mapping(17, this->slide_window[j], this->slide_window[j_1], this->slide_window[j_5]);
+            this->a_bucket[r]++;
+            r = b_mapping(19, this->slide_window[j], this->slide_window[j_2], this->slide_window[j_5]);
+            this->a_bucket[r]++;
+            r = b_mapping(23, this->slide_window[j], this->slide_window[j_3], this->slide_window[j_5]);
+            this->a_bucket[r]++;
+            r = b_mapping(29, this->slide_window[j], this->slide_window[j_4], this->slide_window[j_5]);
+            this->a_bucket[r]++;
+#endif
+#if SLIDING_WND_SIZE>=7
+            r = b_mapping(31, this->slide_window[j], this->slide_window[j_1], this->slide_window[j_6]);
+            this->a_bucket[r]++;
+            r = b_mapping(37, this->slide_window[j], this->slide_window[j_2], this->slide_window[j_6]);
+            this->a_bucket[r]++;
+            r = b_mapping(41, this->slide_window[j], this->slide_window[j_3], this->slide_window[j_6]);
+            this->a_bucket[r]++;
+            r = b_mapping(43, this->slide_window[j], this->slide_window[j_4], this->slide_window[j_6]);
+            this->a_bucket[r]++;
+            r = b_mapping(47, this->slide_window[j], this->slide_window[j_5], this->slide_window[j_6]);
+            this->a_bucket[r]++;
+#endif
+#if SLIDING_WND_SIZE>=8
+            r = b_mapping(53, this->slide_window[j], this->slide_window[j_1], this->slide_window[j_7]);
+            this->a_bucket[r]++;
+            r = b_mapping(59, this->slide_window[j], this->slide_window[j_2], this->slide_window[j_7]);
+            this->a_bucket[r]++;
+            r = b_mapping(61, this->slide_window[j], this->slide_window[j_3], this->slide_window[j_7]);
+            this->a_bucket[r]++;
+            r = b_mapping(67, this->slide_window[j], this->slide_window[j_4], this->slide_window[j_7]);
+            this->a_bucket[r]++;
+            r = b_mapping(71, this->slide_window[j], this->slide_window[j_5], this->slide_window[j_7]);
+            this->a_bucket[r]++;
+            r = b_mapping(73, this->slide_window[j], this->slide_window[j_6], this->slide_window[j_7]);
+            this->a_bucket[r]++;
+#endif
         }
     }
     this->data_len += len;
 }
 
 /* to signal the class there is no more data to be added */
-void TlshImpl::final() 
+void TlshImpl::final(int force_option) 
 {
     // incoming data must more than or equal to MIN_DATA_LENGTH bytes
-    if (this->data_len < MIN_DATA_LENGTH) {
+    if ((force_option == 0) && (this->data_len < MIN_DATA_LENGTH)) {
+      // this->lsh_code be empty
+      delete [] this->a_bucket; this->a_bucket = NULL;
+      return;
+    }
+    if ((force_option) && (this->data_len < MIN_FORCE_DATA_LENGTH)) {
       // this->lsh_code be empty
       delete [] this->a_bucket; this->a_bucket = NULL;
       return;
@@ -171,10 +238,18 @@ void TlshImpl::final()
         }
       }
     }
+#if defined BUCKETS_48
+    if (nonzero < 18) {
+      // printf("nonzero=%d\n", nonzero);
+      delete [] this->a_bucket; this->a_bucket = NULL;
+      return;
+    }
+#else
     if (nonzero <= 4*CODE_SIZE/2) {
       delete [] this->a_bucket; this->a_bucket = NULL;
       return;
     }
+#endif
     
     for(unsigned int i=0; i<CODE_SIZE; i++) {
         unsigned char h=0;
@@ -277,6 +352,52 @@ int TlshImpl::compare(const TlshImpl& other) const
     return (memcmp( &(this->lsh_bin), &(other.lsh_bin), sizeof(this->lsh_bin)));
 }
 
+////////////////////////////////////////////
+// the default for these parameters is 12
+////////////////////////////////////////////
+
+static int length_mult = 12;
+static int qratio_mult = 12;
+
+#ifdef TLSH_DISTANCE_PARAMETERS
+
+       int hist_diff1_add = 1;
+       int hist_diff2_add = 2;
+       int hist_diff3_add = 6;
+
+void set_tlsh_distance_parameters(int length_mult_value, int qratio_mult_value, int hist_diff1_add_value, int hist_diff2_add_value, int hist_diff3_add_value)
+{
+	if (length_mult_value != -1) {
+		length_mult = length_mult_value;
+	}
+	if (qratio_mult_value != -1) {
+		qratio_mult = qratio_mult_value;
+	}
+	if (hist_diff1_add_value != -1) {
+		hist_diff1_add = hist_diff1_add_value;
+	}
+	if (hist_diff2_add_value != -1) {
+		hist_diff2_add = hist_diff2_add_value;
+	}
+	if (hist_diff3_add_value != -1) {
+		hist_diff3_add = hist_diff3_add_value;
+	}
+}
+#endif
+
+int TlshImpl::Lvalue()
+{
+	return(this->lsh_bin.Lvalue);
+}
+int TlshImpl::Q1ratio()
+{
+	return(this->lsh_bin.Q.QR.Q1ratio);
+}
+int TlshImpl::Q2ratio()
+{
+	return(this->lsh_bin.Q.QR.Q2ratio);
+}
+
 int TlshImpl::totalDiff(const TlshImpl& other, bool len_diff) const
 {
     int diff = 0;
@@ -288,20 +409,20 @@ int TlshImpl::totalDiff(const TlshImpl& other, bool len_diff) const
         else if ( ldiff == 1 )
             diff = 1;
         else
-           diff += ldiff*12;
+           diff += ldiff*length_mult;
     }
     
     int q1diff = mod_diff( this->lsh_bin.Q.QR.Q1ratio, other.lsh_bin.Q.QR.Q1ratio, RANGE_QRATIO);
     if ( q1diff <= 1 )
         diff += q1diff;
     else           
-        diff += (q1diff-1)*12;
+        diff += (q1diff-1)*qratio_mult;
     
     int q2diff = mod_diff( this->lsh_bin.Q.QR.Q2ratio, other.lsh_bin.Q.QR.Q2ratio, RANGE_QRATIO);
     if ( q2diff <= 1)
         diff += q2diff;
     else
-        diff += (q2diff-1)*12;
+        diff += (q2diff-1)*qratio_mult;
     
     for (int k = 0; k < TLSH_CHECKSUM_LEN; k++) {    
       if (this->lsh_bin.checksum[k] != other.lsh_bin.checksum[k] ) {

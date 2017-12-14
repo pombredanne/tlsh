@@ -85,7 +85,8 @@ const char *Tlsh::version()
 {
     static char versionBuf[256];
     if (versionBuf[0] == '\0')
-        snprintf(versionBuf, sizeof(versionBuf), "%d.%d.%d %s %s", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, TLSH_HASH, TLSH_CHECKSUM);
+        snprintf(versionBuf, sizeof(versionBuf), "%d.%d.%d %s %s sliding_window=%d",
+		VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, TLSH_HASH, TLSH_CHECKSUM, SLIDING_WND_SIZE);
     return versionBuf;
 }
 
@@ -95,12 +96,12 @@ void Tlsh::update(const unsigned char* data, unsigned int len)
         impl->update(data, len);
 }
 
-void Tlsh::final(const unsigned char* data, unsigned int len)
+void Tlsh::final(const unsigned char* data, unsigned int len, int force_option)
 {
     if ( NULL != impl ){
         if ( NULL != data && len > 0 )
             impl->update(data, len);
-        impl->final();
+        impl->final(force_option);
     }
 }
 
@@ -150,6 +151,19 @@ bool Tlsh::operator==(const Tlsh& other) const
 bool Tlsh::operator!=(const Tlsh& other) const 
 {
     return !(*this==other);
+}
+
+int Tlsh::Lvalue()
+{
+	return( impl->Lvalue() );
+}
+int Tlsh::Q1ratio()
+{
+	return( impl->Q1ratio() );
+}
+int Tlsh::Q2ratio()
+{
+	return( impl->Q2ratio() );
 }
 
 int Tlsh::totalDiff(const Tlsh *other, bool len_diff) const
